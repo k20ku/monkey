@@ -117,3 +117,37 @@ func TestNextTokenMonkeySourceCodeLike(t *testing.T) {
 		}
 	}
 }
+
+func TestNextTokenIdentContainsDigit(t *testing.T) {
+	input := `let x1a_2 = 1;`
+
+	tests := []struct {
+		expectedType    token.TokenType
+		expectedLiteral string
+	}{
+		{token.LET, "let"},
+		{token.IDENT, "x1a_2"},
+		{token.ASSIGN, "="},
+		{token.INT, "1"},
+		{token.SEMICOLON, ";"},
+	}
+	l := New(input)
+
+	for i, tt := range tests {
+		tok := l.NextToken()
+
+		if tok.Type != tt.expectedType {
+			t.Fatalf(
+				"test[%d] - tokentype wrong. expected=%q, got=%q",
+				i, tt.expectedType, tok.Type,
+			)
+		}
+
+		if tok.Literal != tt.expectedLiteral {
+			t.Fatalf(
+				"test[%d] - literal wrong. expected=%q, got=%q",
+				i, tt.expectedLiteral, tok.Literal,
+			)
+		}
+	}
+}
