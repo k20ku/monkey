@@ -2,6 +2,7 @@ package repl
 
 import (
 	"fmt"
+	"io"
 	"maps"
 	"monkey/lexer"
 	"monkey/token"
@@ -9,10 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	// A well-known OSS golang repl "gore" uses "liner".
+	// See [gore](https://github.com/x-motemen/gore/blob/main/liner.go#L11).
 	liner "github.com/peterh/liner" // go get github.com/peterh/liner
 )
 
-const PROMPT = ">> "
+const PROMPT = "monkey> "
 
 var (
 	history_filepath = filepath.Join(os.TempDir(), ".monkey_history")
@@ -32,7 +35,6 @@ func Start() {
 			fmt.Println("Error writing history file:\n", err)
 		}
 		line.Close()
-		println("Thank you. Goodbye!")
 	}()
 
 	// setting liner
@@ -53,14 +55,11 @@ func Start() {
 		hfd.Close()
 	}
 
+	fmt.Println("Ctrl+D to exit!")
+
 	// start repl
 	for {
 		if codeline, err := line.Prompt(PROMPT); err == nil {
-
-			if strings.HasPrefix(codeline, "/exit") { // exit repl if the user types /exit
-				break
-			}
-
 			// lexer
 			// give the lexer the code which the user typed
 			l := lexer.New(codeline)
@@ -69,6 +68,10 @@ func Start() {
 				fmt.Printf("%+v\n", tok)
 			}
 			line.AppendHistory(codeline)
+
+		} else if err == io.EOF {
+			fmt.Println("(^D)")
+			return
 
 		} else if err == liner.ErrPromptAborted { // resume repl if aborted
 			continue
