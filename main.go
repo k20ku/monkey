@@ -3,17 +3,22 @@ package main
 import (
 	"fmt"
 	"monkey/repl"
-	"os"
 	"os/user"
 )
 
 func main() {
-	user, err := user.Current()
-	if err != nil {
-		panic(err)
+	// greeting
+	if user, err := user.Current(); err == nil {
+		fmt.Printf("Hello %s! ", user.Username)
+	} else {
+		fmt.Print("Hello! ")
 	}
-	fmt.Printf("Hello %s! This is the Monkey programming language!\n",
-		user.Username)
-	fmt.Printf("Feel free to type in commands\n")
-	repl.Start(os.Stdin, os.Stdout)
+	fmt.Println("This is the Monkey programming language!")
+	fmt.Println("Feel free to type in commands")
+
+	// start repl
+	repl.Start()
+
+	// greeting
+	println("Thank you. Goodbye!")
 }
