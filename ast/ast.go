@@ -7,6 +7,12 @@ type Node interface {
 	TokenLiteral() string
 }
 
+/*
+type Node = Statement | Expression
+type Program = Statement[]
+type Statement = LetStatement | ...
+*/
+
 type Statement interface {
 	Node
 	statementNode()
