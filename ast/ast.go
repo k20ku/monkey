@@ -4,7 +4,7 @@ import "monkey/token"
 
 // All ast node MUST implement Node interface (MUST have TokenLiteral() method)
 type Node interface {
-	TokenLiteral() string
+	TokenLiteral() string // Literal of the Token which this Node has (e.g. Identifier Node has IDENT `x` token literal)
 }
 
 /*

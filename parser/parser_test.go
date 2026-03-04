@@ -11,7 +11,7 @@ func TestLetStatements(t *testing.T) {
 	input := `
 	let x = 5;
 	let y = 10;
-	let foobar = 33;
+	let foo = 33;
 	`
 	// lexer
 	l := lexer.New(input)
@@ -19,10 +19,12 @@ func TestLetStatements(t *testing.T) {
 	// parser
 	p := New(l)
 	fmt.Printf("p Parser = %#v\n", p)
-	fmt.Printf("l Lexer = %#v\n", l)
+	fmt.Printf("l Lexer = %#v\n\n", l)
 
 	// parse!
 	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
 	if program == nil {
 		t.Fatalf("ParseProgram() returned nil")
 	}
@@ -38,7 +40,7 @@ func TestLetStatements(t *testing.T) {
 	}{
 		{"x"},
 		{"y"},
-		{"foobar"},
+		{"foo"},
 	}
 	for i, tt := range tests {
 		stmt := program.Statements[i]
@@ -47,6 +49,20 @@ func TestLetStatements(t *testing.T) {
 		}
 	}
 
+}
+
+func checkParserErrors(t *testing.T, p *Parser) {
+	errors := p.Erros()
+	if len(errors) == 0 {
+		return
+	}
+
+	t.Errorf("parser has %d errors", len(errors))
+	for _, msg := range errors {
+		t.Errorf("parser error: %q", msg)
+	}
+	// stop the test exceution (Fail Fast!)
+	t.FailNow()
 }
 
 func testLetStatement(t *testing.T, s ast.Statement, name string) bool {
