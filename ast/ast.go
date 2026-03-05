@@ -62,6 +62,20 @@ type Identifier struct {
 	Value string      // name (`x`)
 }
 
+/*
+return <expression>
+*/
+type ReturnStatement struct {
+	Token       token.Token // RETURN token
+	ReturnValue Expression
+}
+
+// implement Statement
+func (rs *ReturnStatement) statementNode() {}
+func (rs *ReturnStatement) TokenLiteral() string {
+	return rs.Token.Literal
+}
+
 // implement Experssion
 func (i *Identifier) expresstionNode() {}
 func (i *Identifier) TokenLiteral() string {
