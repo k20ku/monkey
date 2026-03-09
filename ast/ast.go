@@ -135,6 +135,9 @@ func (rs *ReturnStatement) String() string {
 	return out.String()
 }
 
+/*
+<Expression> + ";" (e.g. 5; add(3,4);
+*/
 type ExpressionStatement struct {
 	Token      token.Token // first token of this expression
 	Expression Expression
@@ -154,4 +157,20 @@ func (es *ExpressionStatement) String() string {
 	}
 
 	return ""
+}
+
+type IntegerLiteral struct {
+	Token token.Token
+	Value int64
+}
+
+// impl Expression
+func (il *IntegerLiteral) expresstionNode() {}
+
+// impl Node
+func (il *IntegerLiteral) TokenLiteral() string {
+	return il.Token.Literal
+}
+func (il *IntegerLiteral) String() string {
+	return il.Token.Literal
 }
