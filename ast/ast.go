@@ -24,7 +24,7 @@ type Statement interface {
 
 type Expression interface {
 	Node
-	expresstionNode()
+	expressionNode()
 }
 
 // root node of ast
@@ -95,7 +95,7 @@ type Identifier struct {
 }
 
 // impl Experssion
-func (i *Identifier) expresstionNode() {}
+func (i *Identifier) expressionNode() {}
 
 // impl Node
 func (i *Identifier) TokenLiteral() string {
@@ -165,7 +165,7 @@ type IntegerLiteral struct {
 }
 
 // impl Expression
-func (il *IntegerLiteral) expresstionNode() {}
+func (il *IntegerLiteral) expressionNode() {}
 
 // impl Node
 func (il *IntegerLiteral) TokenLiteral() string {
@@ -173,4 +173,26 @@ func (il *IntegerLiteral) TokenLiteral() string {
 }
 func (il *IntegerLiteral) String() string {
 	return il.Token.Literal
+}
+
+type PrefixExpression struct {
+	Token    token.Token // prefix token e.g "!"
+	Operator string
+	Right    Expression
+}
+
+func (pe *PrefixExpression) expressionNode() {}
+func (pe *PrefixExpression) TokenLiteral() string {
+	return pe.Token.Literal
+}
+func (pe *PrefixExpression) String() string {
+	// (!5), (!(-5))
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(pe.Operator)
+	out.WriteString(pe.Right.String())
+	out.WriteString(")")
+
+	return out.String()
 }
