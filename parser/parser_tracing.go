@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 var traceLevel int = 0
@@ -20,13 +21,17 @@ func tracePrint(fs string) {
 func incIdent() { traceLevel = traceLevel + 1 }
 func decIdent() { traceLevel = traceLevel - 1 }
 
-func trace(msg string) string {
+func trace(msg string) (string, time.Time) {
 	incIdent()
 	tracePrint("BEGIN " + msg)
-	return msg
+	before := time.Now()
+	return msg, before
 }
 
-func untrace(msg string) {
-	tracePrint("END " + msg)
+func untrace(msg string, before time.Time) {
+	after := time.Now()
+	tracePrint(
+		"END " + msg + fmt.Sprintf(" (%d μs)", (after.Sub(before)).Microseconds()),
+	)
 	decIdent()
 }

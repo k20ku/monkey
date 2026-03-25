@@ -125,6 +125,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
+	// defer untrace(trace("parseIdentifier"))
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
@@ -178,7 +179,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 }
 
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
-	defer untrace(trace("parseExpressionStatement"))
+	// defer untrace(trace("parseExpressionStatement"))
 
 	stmt := &ast.ExpressionStatement{Token: p.curToken}
 
@@ -191,26 +192,8 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	return stmt
 }
 
-func (p *Parser) parseIntegerLiteral() ast.Expression {
-	defer untrace(trace("parseIntegerLiteral"))
-
-	lit := &ast.IntegerLiteral{Token: p.curToken}
-
-	// try TokenLiteral2Int
-	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
-	if err != nil {
-		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
-		p.errors = append(p.errors, msg)
-		return nil
-	}
-
-	lit.Value = value
-
-	return lit
-}
-
 func (p *Parser) parseExpression(precedence int) ast.Expression {
-	defer untrace(trace("parseExpression"))
+	// defer untrace(trace("parseExpression"))
 
 	prefix := p.prefixParseFns[p.curToken.Type]
 
@@ -235,8 +218,26 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	return leftExp
 }
 
+func (p *Parser) parseIntegerLiteral() ast.Expression {
+	// defer untrace(trace("parseIntegerLiteral"))
+
+	lit := &ast.IntegerLiteral{Token: p.curToken}
+
+	// try TokenLiteral2Int
+	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
+	if err != nil {
+		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+
+	lit.Value = value
+
+	return lit
+}
+
 func (p *Parser) parsePrefixExpression() ast.Expression {
-	defer untrace(trace("parsePrefixExpression"))
+	// defer untrace(trace("parsePrefixExpression"))
 
 	expression := &ast.PrefixExpression{
 		Token:    p.curToken,
@@ -250,13 +251,8 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	return expression
 }
 
-func (p *Parser) noPrefixParseFnError(t token.TokenType) {
-	msg := fmt.Sprintf("no prefix parse function for %v found", t)
-	p.errors = append(p.errors, msg)
-}
-
 func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
-	defer untrace(trace("parseInfixExpression"))
+	// defer untrace(trace("parseInfixExpression"))
 
 	expression := &ast.InfixExpression{
 		Token:    p.curToken,
@@ -285,6 +281,11 @@ func (p *Parser) curPrecedence() int {
 	}
 
 	return LOWEST
+}
+
+func (p *Parser) noPrefixParseFnError(t token.TokenType) {
+	msg := fmt.Sprintf("no prefix parse function for %v found", t)
+	p.errors = append(p.errors, msg)
 }
 
 // Helpers
