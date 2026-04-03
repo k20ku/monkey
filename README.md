@@ -32,4 +32,8 @@ Expression :=
     |   Consequence: *BlockStatement
     |   Alternative: *BlockStatement
     | )
+    | *FunctionLiteral(
+    |   Parameters: []*identifier
+    |   Body: *BlockStatement  
+    | )
 ```

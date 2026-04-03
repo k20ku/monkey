@@ -56,6 +56,7 @@ func New(l *lexer.Lexer) *Parser {
 		errors: []string{},
 	} // &Parser {l(Lexer): l, .., curToken(Token): nil, peekToken(Token): nil}
 
+	// prefix
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
@@ -66,7 +67,9 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.IF, p.parseIfExpression)
+	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 
+	// infix
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
 	p.registerInfix(token.MINUS, p.parseInfixExpression)
@@ -84,8 +87,15 @@ func New(l *lexer.Lexer) *Parser {
 	return p
 }
 
+// Preceed to the next token
+func (p *Parser) nextToken() {
+	p.curToken = p.peekToken
+	p.peekToken = p.l.NextToken()
+}
+
 // Helpers
-// error handling
+
+// Return parsing errors
 func (p *Parser) Errors() []string {
 	return p.errors
 }
@@ -96,7 +106,7 @@ else adds errors to this parser.
 */
 func (p *Parser) peekError(t token.TokenType) {
 	message := fmt.Sprintf(
-		"expected next token to be %s, got %s instead",
+		"expected next token to be '%s', got '%s' instead",
 		t, p.peekToken.Type,
 	)
 	p.errors = append(p.errors, message)
@@ -111,13 +121,9 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 	p.infixParseFns[tokenType] = fn
 }
 
-// Next
-func (p *Parser) nextToken() {
-	p.curToken = p.peekToken
-	p.peekToken = p.l.NextToken()
-}
-
 // Parsers
+
+// parse program and return AST
 func (p *Parser) ParseProgram() *ast.Program {
 	program := &ast.Program{}
 	program.Statements = []ast.Statement{}
@@ -357,6 +363,7 @@ func (p *Parser) parseIfExpression() ast.Expression {
 
 	expression.Consequence = p.parseBlockStatement()
 
+	// allow for abbreviating 'else'
 	if p.peekTokenIs(token.ELSE) {
 		p.nextToken()
 
@@ -386,4 +393,52 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	}
 
 	return block
+}
+
+func (p *Parser) parseFunctionLiteral() ast.Expression {
+	lit := &ast.FuctionLiteral{Token: p.curToken}
+
+	// next is '('?
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
+	lit.Parameters = p.parseFunctionParameters()
+
+	// next is '{'?
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	lit.Body = p.parseBlockStatement()
+
+	return lit
+}
+
+func (p *Parser) parseFunctionParameters() []*ast.Identifier {
+	identifiers := []*ast.Identifier{}
+
+	if p.peekTokenIs(token.RPAREN) {
+		p.nextToken()
+		return identifiers
+	}
+
+	p.nextToken()
+
+	ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	identifiers = append(identifiers, ident)
+
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken() // after: on the ','
+		p.nextToken() // after: om the next identifier
+		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		identifiers = append(identifiers, ident)
+	}
+
+	// on where (... , p.curtoken )?
+	if !p.expectPeek(token.RPAREN) {
+		return nil // invalid
+	}
+
+	return identifiers
 }
