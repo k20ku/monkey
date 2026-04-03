@@ -64,6 +64,8 @@ func New(l *lexer.Lexer) *Parser {
 
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
+	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
+	p.registerPrefix(token.IF, p.parseIfExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -74,7 +76,6 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
-	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	// Read two tokens.
 	// p sets both curToken & peekToken
 	p.nextToken()
@@ -89,6 +90,10 @@ func (p *Parser) Errors() []string {
 	return p.errors
 }
 
+/*
+If token is an expected type, then invokes p.nextToken,
+else adds errors to this parser.
+*/
 func (p *Parser) peekError(t token.TokenType) {
 	message := fmt.Sprintf(
 		"expected next token to be %s, got %s instead",
@@ -118,9 +123,9 @@ func (p *Parser) ParseProgram() *ast.Program {
 	program.Statements = []ast.Statement{}
 
 	for p.curToken.Type != token.EOF {
-		stmt := p.parseStatement()
-		if stmt != nil { // exclude nil
-			program.Statements = append(program.Statements, stmt)
+		statement := p.parseStatement()
+		if statement != nil { // exclude nil
+			program.Statements = append(program.Statements, statement)
 		}
 		p.nextToken()
 	}
@@ -325,4 +330,60 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 	}
 
 	return exp
+}
+
+func (p *Parser) parseIfExpression() ast.Expression {
+	expression := &ast.IfExpression{Token: p.curToken}
+
+	// これほどexpectPeekを広範に使う関数は初めてだ．
+	// これまで必要がなかったからだ
+	// (
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
+	p.nextToken()
+	expression.Condition = p.parseExpression(LOWEST)
+
+	// )
+	if !p.expectPeek(token.RPAREN) {
+		return nil
+	}
+
+	// {
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	expression.Consequence = p.parseBlockStatement()
+
+	if p.peekTokenIs(token.ELSE) {
+		p.nextToken()
+
+		if !p.expectPeek(token.LBRACE) {
+			return nil
+		}
+
+		expression.Alternative = p.parseBlockStatement()
+	}
+
+	return expression
+}
+
+func (p *Parser) parseBlockStatement() *ast.BlockStatement {
+	block := &ast.BlockStatement{Token: p.curToken}
+	block.Statements = []ast.Statement{}
+
+	p.nextToken()
+
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		statement := p.parseStatement()
+		if statement != nil {
+			block.Statements = append(block.Statements, statement)
+		}
+
+		p.nextToken() // これがないと無限ループなの怖いよね
+	}
+
+	return block
 }
