@@ -13,7 +13,7 @@ type Lexer struct {
 
 func New(input string) *Lexer {
 	l := &Lexer{input: input} // {input: input, position: 0, readPosition: 0, ch: 0 ("NUL")}
-	l.readChar()
+	l.readChar()              // set to {position: 0, readPosition: 1, ch: input[0]}
 	return l
 }
 
@@ -23,8 +23,8 @@ func (l *Lexer) readChar() {
 	} else {
 		l.ch = l.input[l.readPosition]
 	}
-	l.position = l.readPosition // 常に最後に呼んだ場所
-	l.readPosition += 1         // 常に次に読もうとしている場所
+	l.position = l.readPosition
+	l.readPosition += 1
 }
 
 func (l *Lexer) NextToken() token.Token {
