@@ -2,8 +2,9 @@ package ast
 
 import (
 	"bytes"
-	"monkey/token"
 	"strings"
+
+	"github.com/k20ku/monkey/token"
 )
 
 // All ast node MUST implement Node interface (MUST have TokenLiteral() method)

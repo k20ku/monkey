@@ -2,10 +2,12 @@ package parser
 
 import (
 	"fmt"
-	"monkey/ast"
-	"monkey/lexer"
-	"monkey/token"
+
 	"strconv"
+
+	"github.com/k20ku/monkey/ast"
+	"github.com/k20ku/monkey/lexer"
+	"github.com/k20ku/monkey/token"
 )
 
 type (

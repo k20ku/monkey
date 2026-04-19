@@ -3,37 +3,38 @@
 ## test
 
 ```bash
-go test -timeout 5s -run TestXX monkey/xx -v
+go test -timeout 5s -run TestXxx github.com/k20ku/monkey/<package> -v
 ```
 
 e.g.
 
 ```bash
-go test -timeout 5s -run TestParsingPrefixExpressions monkey/parser -v
+go test -timeout 5s \
+   -run TestParsingPrefixExpressions github.com/k20ku/monkey/parser -v
 ```
 
 ## syntax
 
 ```pesudo
 Statement :=
-    | *LetStatement(Name: *identifier, Value: Expression)
+      *LetStatement(Name: *identifier, Value: Expression)
     | *ReturnStatement(ReturnValue: Expression)
     | *ExpressionStatement(Expression: Expression)
     | *BlockStatement(Statements: []Statement)
 
 Expression :=
-    | *Identifier
+      *Identifier
     | *IntegerLiteral
     | *PrefixExpression(Right: Expression)
     | *InfixExpressoion(Left: Expression, Right: Expression)
     | *Boolean
     | *IfExpression(
-    |   Condition: Expression
-    |   Consequence: *BlockStatement
-    |   Alternative: *BlockStatement
-    | )
+        Condition: Expression
+        Consequence: *BlockStatement
+        Alternative: *BlockStatement
+      )
     | *FunctionLiteral(
-    |   Parameters: []*identifier
-    |   Body: *BlockStatement  
-    | )
+        Parameters: []*identifier
+        Body: *BlockStatement  
+      )
 ```

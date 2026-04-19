@@ -1,4 +1,4 @@
-module monkey
+module github.com/k20ku/monkey
 
 go 1.25.0
 

@@ -1,14 +1,12 @@
 package lexer
 
-import (
-	"monkey/token"
-)
+import "github.com/k20ku/monkey/token"
 
 type Lexer struct {
 	input        string
-	position     int  // 入力における現在の位置（現在の文字を指し示す）
-	readPosition int  // これから読む位置（現在の文字の次）
-	ch           byte // 現在検査中の文字（ASCII以外は"rune"にして複数バイト対応せよ）
+	position     int  // current position
+	readPosition int  // next position
+	ch           byte // current char (use "rune" for Unicode char)
 }
 
 func New(input string) *Lexer {
@@ -19,7 +17,7 @@ func New(input string) *Lexer {
 
 func (l *Lexer) readChar() {
 	if l.readPosition >= len(l.input) {
-		l.ch = 0 // ASCII "NUL" charattor
+		l.ch = 0 // ASCII "NUL" char
 	} else {
 		l.ch = l.input[l.readPosition]
 	}

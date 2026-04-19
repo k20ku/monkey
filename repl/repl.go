@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"monkey/lexer"
-	"monkey/parser"
-	"monkey/token"
+	"slices"
+
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +13,11 @@ import (
 	// A well-known OSS golang repl "gore" uses "liner".
 	// See [gore](https://github.com/x-motemen/gore/blob/main/liner.go#L11).
 	liner "github.com/peterh/liner" // go get github.com/peterh/liner
+
+	"github.com/k20ku/monkey/evaluator"
+	"github.com/k20ku/monkey/lexer"
+	"github.com/k20ku/monkey/parser"
+	"github.com/k20ku/monkey/token"
 )
 
 var (
@@ -34,34 +38,39 @@ const MONKEY_FACE = `            __,__
            '-----'
 `
 
-type ReplMode string
+type ReplMode struct {
+	mode   string
+	prompt string
+}
 
-const (
-	LEX     ReplMode = "/lex"
-	PARSE   ReplMode = "/parse"
-	DEFAULT ReplMode = "/"
+var AllReplModes = []*ReplMode{}
+
+func registerMode(mode string, prompt string) *ReplMode {
+	m := &ReplMode{mode: mode, prompt: prompt}
+	AllReplModes = append(AllReplModes, m)
+	return m
+}
+
+var (
+	LEX     = registerMode("/lex", "LEX")
+	PARSE   = registerMode("/parse", "PARSE")
+	EVAL    = registerMode("/eval", "EVAL")
+	DEFAULT = registerMode("/", "")
 )
 
-func (rm ReplMode) String() string {
-	switch rm {
-	case LEX:
-		return "/lex"
-	case PARSE:
-		return "/parse"
-	case DEFAULT:
-		return "/"
+func (rm *ReplMode) String() string {
+	if slices.Contains(AllReplModes, rm) {
+		return rm.mode
 	}
 	return ""
 }
 
-var AllReplModes = []ReplMode{LEX, PARSE, DEFAULT}
+func (rm *ReplMode) Prompt() string {
+	if rm == DEFAULT {
+		return "monkey> "
+	}
 
-var replMode ReplMode = DEFAULT
-
-var PromptOn = map[ReplMode]string{
-	LEX:     "monkey(LEX)> ",
-	PARSE:   "monkey(PARSE)> ",
-	DEFAULT: "monkey> ",
+	return "monkey(" + rm.prompt + ")> "
 }
 
 func Start() {
@@ -97,9 +106,11 @@ func Start() {
 		hfd.Close()
 	}
 
+	// init mode
+	var replMode *ReplMode = DEFAULT
 	// start repl
 	for {
-		codeline, err := line.Prompt(PromptOn[replMode])
+		codeline, err := line.Prompt(replMode.Prompt())
 
 		codeline = strings.TrimSpace(codeline)
 
@@ -110,6 +121,8 @@ func Start() {
 				replMode = LEX
 			case PARSE.String():
 				replMode = PARSE
+			case EVAL.String():
+				replMode = EVAL
 			case DEFAULT.String():
 				replMode = DEFAULT
 			default:
@@ -142,12 +155,14 @@ func Start() {
 	}
 }
 
-func doOn(mode ReplMode, codeline string) {
+func doOn(mode *ReplMode, codeline string) {
 	switch mode {
 	case LEX:
 		doOnLex(codeline)
 	case PARSE:
 		doOnParse(codeline)
+	case EVAL:
+		doOnEval(codeline)
 	case DEFAULT:
 		doOnDefault(codeline)
 	}
@@ -174,6 +189,26 @@ func doOnParse(codeline string) {
 	io.WriteString(os.Stdout, "\n")
 }
 
+func doOnEval(codeline string) {
+	l := lexer.New(codeline)
+	p := parser.New(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) != 0 {
+		printParserErrors(os.Stdout, p.Errors())
+		return
+	}
+
+	io.WriteString(os.Stdout, program.String())
+	io.WriteString(os.Stdout, "\n")
+
+	evaluated := evaluator.Eval(program)
+	if evaluated != nil {
+		io.WriteString(os.Stdout, evaluated.Inspect())
+		io.WriteString(os.Stdout, "\n")
+	}
+}
+
 func doOnDefault(codeline string) {
 	doOnParse(codeline)
 }
@@ -183,7 +218,7 @@ func changeMode(codeline string) bool {
 }
 
 func printParserErrors(out io.Writer, errors []string) {
-	io.WriteString(out, MONKEY_FACE)
+	// io.WriteString(out, MONKEY_FACE)
 	io.WriteString(out, "Woops! We ran into some monkey business here!\n")
 	io.WriteString(out, " parser errors:\n")
 	for _, msg := range errors {

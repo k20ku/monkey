@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"monkey/repl"
 	"os/user"
+
+	"github.com/k20ku/monkey/repl"
 )
 
 func main() {
@@ -17,9 +18,17 @@ func main() {
 	fmt.Println("Feel free to type in commands")
 	fmt.Println("Ctrl+D to exit!")
 
+	for i, mode := range repl.AllReplModes {
+		if i == 0 {
+			fmt.Printf("'%s'", mode.String())
+			continue
+		}
+		fmt.Printf(", '%s'", mode.String())
+	}
+	fmt.Println()
 	// start repl
 	repl.Start()
 
 	// greeting
-	println("Thank you. Goodbye!")
+	println("Thank you. See you!")
 }

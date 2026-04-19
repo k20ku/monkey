@@ -3,7 +3,7 @@ package lexer
 import (
 	"testing"
 
-	"monkey/token"
+	"github.com/k20ku/monkey/token"
 )
 
 func TestNextTokenOnlySymbols(t *testing.T) {
