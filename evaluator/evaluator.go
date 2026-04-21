@@ -28,6 +28,10 @@ func Eval(node ast.Node) object.Object {
 	case *ast.PrefixExpression:
 		right := Eval(node.Right)
 		return evalPrefixExpression(node.Operator, right)
+	case *ast.InfixExpression:
+		left := Eval(node.Left)
+		right := Eval(node.Right)
+		return evalInfixExpression(node.Operator, left, right)
 	}
 
 	return nil
@@ -61,7 +65,7 @@ func evalPrefixExpression(
 		return evalMinusPrefixOperatorExpression(right)
 	default:
 		fmt.Printf(
-			"evalPrefix: %s is not allowed for operator\n\tfor %#v\n",
+			"evalPrefix causion: %s is not allowed for operator\n\tfor %#v\n",
 			operator,
 			right,
 		)
@@ -86,7 +90,7 @@ func evalBangOperatorExpression(right object.Object) object.Object {
 func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
 	if right.Type() != object.INTEGER_OBJ {
 		fmt.Printf(
-			"evalMinusPrefix: '-' is not allowed\n\tfor %#v\n",
+			"evalMinusPrefix causion: '-' is not allowed\n\tfor %#v\n",
 			right,
 		)
 		return NULL
@@ -94,4 +98,57 @@ func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
 
 	value := right.(*object.Integer).Value
 	return &object.Integer{Value: -value}
+}
+
+func evalInfixExpression(
+	operator string,
+	left, right object.Object,
+) object.Object {
+	switch {
+	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
+		return evalIntegerInfixExpression(operator, left, right)
+	// default is pointer comparision between objects
+	case operator == "==":
+		return nativeBoolToBooleanObject(left == right)
+	case operator == "!=":
+		return nativeBoolToBooleanObject(left != right)
+	default:
+		fmt.Printf(
+			"evalInfix causion: '%v %s %v' is unintended\n",
+			left.Type(),
+			operator,
+			right.Type(),
+		)
+		return NULL
+	}
+}
+
+func evalIntegerInfixExpression(
+	operator string,
+	left, right object.Object,
+) object.Object {
+	leftVal := left.(*object.Integer).Value
+	rightVal := right.(*object.Integer).Value
+
+	switch operator {
+	case "+":
+		return &object.Integer{Value: leftVal + rightVal}
+	case "-":
+		return &object.Integer{Value: leftVal - rightVal}
+	case "*":
+		return &object.Integer{Value: leftVal * rightVal}
+	case "/":
+		return &object.Integer{Value: leftVal / rightVal}
+	case "<":
+		return nativeBoolToBooleanObject(leftVal < rightVal)
+	case ">":
+		return nativeBoolToBooleanObject(leftVal > rightVal)
+	case "==":
+		return nativeBoolToBooleanObject(leftVal == rightVal)
+	case "!=":
+		return nativeBoolToBooleanObject(leftVal != rightVal)
+	default:
+		fmt.Printf("evalIntegerInfix causion: %s is unexpected with Integers\n", operator)
+		return NULL
+	}
 }
