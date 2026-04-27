@@ -193,3 +193,76 @@ if (10 > 1) {
 		testIntegerObject(t, evaluated, tt.expected)
 	}
 }
+
+func TestErrorMessage(t *testing.T) {
+	tests := map[string]struct {
+		input           string
+		expectedMessage string
+	}{
+		"error INT+BOOL": {
+			"5 + true",
+			"type mismatch: INTEGER(5) + BOOLEAN(true)",
+		},
+		"error INT+BOOL avoid incoming next eval": {
+			"5 + true; 5;",
+			"type mismatch: INTEGER(5) + BOOLEAN(true)",
+		},
+		"error -Bool": {
+			"-true",
+			"unknown operator: -BOOLEAN(true)",
+		},
+		"error BOOL+BOOL": {
+			"true + false",
+			"unknown operator: BOOLEAN(true) + BOOLEAN(false)",
+		},
+		"error BOOL+BOOL avoid incoming next eval": {
+			"5; true + false; 5",
+			"unknown operator: BOOLEAN(true) + BOOLEAN(false)",
+		},
+		"error in if-block": {
+			"if (10 > 1) {true + false}",
+			"unknown operator: BOOLEAN(true) + BOOLEAN(false)",
+		},
+		"error in nested if-block": {
+			`
+if (10 > 1) {
+	if (10 > 1) {
+		return true + false;
+	}
+	return 1;
+}
+			`,
+			"unknown operator: BOOLEAN(true) + BOOLEAN(false)",
+		},
+		"error stops incoming infix eval": {
+			"4 * true / 3",
+			"type mismatch: INTEGER(4) * BOOLEAN(true)",
+		},
+		"error in if-condition returns fail-fast": {
+			"if (true / false) { 10 }",
+			"unknown operator: BOOLEAN(true) / BOOLEAN(false)",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			evaluated := testEval(tt.input)
+
+			errObj, ok := evaluated.(*object.Error)
+			if !ok {
+				t.Errorf(
+					"no error object returned. got=%T(%+v)",
+					evaluated, evaluated,
+				)
+				return
+			}
+
+			if errObj.Message != tt.expectedMessage {
+				t.Errorf(
+					"wrong error message. expected=%q, got=%q,",
+					tt.expectedMessage, errObj.Message,
+				)
+			}
+		})
+	}
+}
