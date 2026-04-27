@@ -199,9 +199,6 @@ func doOnEval(codeline string) {
 		return
 	}
 
-	io.WriteString(os.Stdout, program.String())
-	io.WriteString(os.Stdout, "\n")
-
 	evaluated := evaluator.Eval(program)
 	if evaluated != nil {
 		io.WriteString(os.Stdout, evaluated.Inspect())
