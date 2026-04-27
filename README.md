@@ -16,6 +16,10 @@ go test -timeout 5s \
 ## syntax
 
 ```pesudo
+Node :=
+      *Program(Statements: []Statement)
+    | Statement
+    | Expression
 Statement :=
       *LetStatement(Name: *identifier, Value: Expression)
     | *ReturnStatement(ReturnValue: Expression)

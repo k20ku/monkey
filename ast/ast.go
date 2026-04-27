@@ -269,7 +269,7 @@ type BlockStatement struct {
 }
 
 func (bs *BlockStatement) statementNode() {}
-func (bs *BlockStatement) TokenLiteal() string {
+func (bs *BlockStatement) TokenLiteral() string {
 	return bs.Token.Literal
 }
 func (bs *BlockStatement) String() string {
