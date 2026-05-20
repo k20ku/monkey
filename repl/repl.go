@@ -16,6 +16,7 @@ import (
 
 	"github.com/k20ku/monkey/evaluator"
 	"github.com/k20ku/monkey/lexer"
+	"github.com/k20ku/monkey/object"
 	"github.com/k20ku/monkey/parser"
 	"github.com/k20ku/monkey/token"
 )
@@ -108,6 +109,7 @@ func Start() {
 
 	// init mode
 	var replMode *ReplMode = DEFAULT
+	env := object.NewEnvironment()
 	// start repl
 	for {
 		codeline, err := line.Prompt(replMode.Prompt())
@@ -139,7 +141,7 @@ func Start() {
 
 		switch err {
 		case nil:
-			doOn(replMode, codeline)
+			doOn(replMode, codeline, env)
 			line.AppendHistory(codeline)
 
 		case io.EOF:
@@ -155,16 +157,16 @@ func Start() {
 	}
 }
 
-func doOn(mode *ReplMode, codeline string) {
+func doOn(mode *ReplMode, codeline string, env *object.Environment) {
 	switch mode {
 	case LEX:
 		doOnLex(codeline)
 	case PARSE:
 		doOnParse(codeline)
 	case EVAL:
-		doOnEval(codeline)
+		doOnEval(codeline, env)
 	case DEFAULT:
-		doOnDefault(codeline)
+		doOnDefault(codeline, env)
 	}
 }
 
@@ -189,7 +191,7 @@ func doOnParse(codeline string) {
 	io.WriteString(os.Stdout, "\n")
 }
 
-func doOnEval(codeline string) {
+func doOnEval(codeline string, env *object.Environment) {
 	l := lexer.New(codeline)
 	p := parser.New(l)
 	program := p.ParseProgram()
@@ -199,15 +201,15 @@ func doOnEval(codeline string) {
 		return
 	}
 
-	evaluated := evaluator.Eval(program)
+	evaluated := evaluator.Eval(program, env)
 	if evaluated != nil {
 		io.WriteString(os.Stdout, evaluated.Inspect())
 		io.WriteString(os.Stdout, "\n")
 	}
 }
 
-func doOnDefault(codeline string) {
-	doOnParse(codeline)
+func doOnDefault(codeline string, env *object.Environment) {
+	doOnEval(codeline, env)
 }
 
 func changeMode(codeline string) bool {

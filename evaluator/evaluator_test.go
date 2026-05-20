@@ -42,8 +42,9 @@ func testEval(input string) object.Object {
 	l := lexer.New(input)
 	p := parser.New(l)
 	program := p.ParseProgram()
+	env := object.NewEnvironment()
 
-	return Eval(program)
+	return Eval(program, env)
 }
 
 func testIntegerObject(
@@ -194,7 +195,7 @@ if (10 > 1) {
 	}
 }
 
-func TestErrorMessage(t *testing.T) {
+func TestErrorHandling(t *testing.T) {
 	tests := map[string]struct {
 		input           string
 		expectedMessage string
@@ -242,6 +243,10 @@ if (10 > 1) {
 			"if (true / false) { 10 }",
 			"unknown operator: BOOLEAN(true) / BOOLEAN(false)",
 		},
+		"using undefined identifier": {
+			"foobar",
+			"identifier not found: foobar",
+		},
 	}
 
 	for name, tt := range tests {
@@ -263,6 +268,24 @@ if (10 > 1) {
 					tt.expectedMessage, errObj.Message,
 				)
 			}
+		})
+	}
+}
+
+func TestLetStatement(t *testing.T) {
+	tests := map[string]struct {
+		input    string
+		expected int64
+	}{
+		"let holds simple Integer": {"let a = 5; a;", 5},
+		"let holds infix expr":     {"let a = 5 * 5; a;", 25},
+		"2 sequencial let":         {"let a = 5; let b = a + 1; b;", 6},
+		"3 sequencial let":         {"let a = 2; let b = a; let c = a + b + 1; c", 5},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			testIntegerObject(t, testEval(tt.input), tt.expected)
 		})
 	}
 }
