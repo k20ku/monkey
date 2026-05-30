@@ -1,6 +1,7 @@
 package repl
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"maps"
@@ -187,7 +188,12 @@ func doOnParse(codeline string) {
 		return
 	}
 
-	io.WriteString(os.Stdout, program.String())
+	b, err := json.MarshalIndent(program, "", " ")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	os.Stdout.Write(b)
 	io.WriteString(os.Stdout, "\n")
 }
 

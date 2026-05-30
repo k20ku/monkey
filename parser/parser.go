@@ -116,6 +116,18 @@ func (p *Parser) peekError(t token.TokenType) {
 	p.errors = append(p.errors, message)
 }
 
+/*
+If token is an expected type, then invokes p.nextToken,
+else adds errors to this parser.
+*/
+func (p *Parser) curError(t token.TokenType) {
+	message := fmt.Sprintf(
+		"expected current token to be '%s', got '%s' instead",
+		t, p.curToken.Type,
+	)
+	p.errors = append(p.errors, message)
+}
+
 // ParseFn
 func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
 	p.prefixParseFns[tokenType] = fn
@@ -329,6 +341,14 @@ func (p *Parser) expectPeek(t token.TokenType) bool {
 	}
 }
 
+func (p *Parser) expectCur(t token.TokenType) bool {
+	if p.curTokenIs(t) {
+		return true
+	} else {
+		p.curError(t)
+		return false
+	}
+}
 func (p *Parser) parseBoolean() ast.Expression {
 	return &ast.Boolean{Token: p.curToken, Value: p.curTokenIs(token.TRUE)}
 }
@@ -346,6 +366,7 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 }
 
 func (p *Parser) parseIfExpression() ast.Expression {
+	// defer untrace(trace("parseIfExpression"))
 	expression := &ast.IfExpression{Token: p.curToken}
 
 	// これほどexpectPeekを広範に使う関数は初めてだ．
@@ -370,15 +391,26 @@ func (p *Parser) parseIfExpression() ast.Expression {
 
 	expression.Consequence = p.parseBlockStatement()
 
+	// }
+	if !p.expectCur(token.RBRACE) {
+		return nil
+	}
+
 	// allow for abbreviating 'else'
 	if p.peekTokenIs(token.ELSE) {
 		p.nextToken()
 
+		// {
 		if !p.expectPeek(token.LBRACE) {
 			return nil
 		}
 
 		expression.Alternative = p.parseBlockStatement()
+
+		// }
+		if !p.expectCur(token.RBRACE) {
+			return nil
+		}
 	}
 
 	return expression
@@ -390,6 +422,8 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 
 	p.nextToken()
 
+	// EOFで止めるのは万が一の無限ループ防ぐためだが
+	// できるだけRBRACEで停止しないとparser errorを出すようにしたい
 	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
 		statement := p.parseStatement()
 		if statement != nil {
@@ -405,19 +439,24 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 func (p *Parser) parseFunctionLiteral() ast.Expression {
 	lit := &ast.FuctionLiteral{Token: p.curToken}
 
-	// next is '('?
+	// (
 	if !p.expectPeek(token.LPAREN) {
 		return nil
 	}
 
 	lit.Parameters = p.parseFunctionParameters()
 
-	// next is '{'?
+	// {
 	if !p.expectPeek(token.LBRACE) {
 		return nil
 	}
 
 	lit.Body = p.parseBlockStatement()
+
+	// }
+	if !p.expectCur(token.RBRACE) {
+		return nil
+	}
 
 	return lit
 }
