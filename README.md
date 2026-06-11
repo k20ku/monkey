@@ -188,6 +188,10 @@ Expression :=
         Parameters: []*identifier
         Body: *BlockStatement  
       )
+    | *CallExpression(
+        Function: Expression
+        Arguments: []Expression
+      )
 ```
 
 ## Development Process

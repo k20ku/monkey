@@ -38,7 +38,6 @@ func TestEvalIntegerExpression(t *testing.T) {
 }
 
 func testEval(input string) object.Object {
-
 	l := lexer.New(input)
 	p := parser.New(l)
 	program := p.ParseProgram()
@@ -51,6 +50,7 @@ func testIntegerObject(
 	t *testing.T,
 	obj object.Object, expected int64,
 ) bool {
+	t.Helper()
 	result, ok := obj.(*object.Integer)
 	if !ok {
 		t.Errorf("object is not Integer. got=%T (%+v)", obj, obj)
@@ -101,6 +101,7 @@ func testBooleanObject(
 	t *testing.T,
 	obj object.Object, expected bool,
 ) bool {
+	t.Helper()
 	result, ok := obj.(*object.Boolean)
 	if !ok {
 		t.Errorf("object is not Boolean. got=%T (%+v)", obj, obj)
@@ -118,6 +119,7 @@ func testBooleanObject(
 }
 
 func testNullObject(t *testing.T, obj object.Object) bool {
+	t.Helper()
 	if obj != NULL {
 		t.Errorf("object is not NULL. got=%T (%#v)", obj, obj)
 		return false
@@ -192,6 +194,65 @@ if (10 > 1) {
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
 		testIntegerObject(t, evaluated, tt.expected)
+	}
+}
+
+func TestFunctionObject(t *testing.T) {
+	input := "fn (x) { x + 2; };"
+
+	evaluated := testEval(input)
+	fn, ok := evaluated.(*object.Function)
+	if !ok {
+		t.Fatalf("object is not Function. got=%T (%+v)", evaluated, evaluated)
+	}
+
+	if len(fn.Parameters) != 1 {
+		t.Fatalf("function has wrong parameters. Parameters=%+v", fn.Parameters)
+	}
+
+	if fn.Parameters[0].String() != "x" {
+		t.Fatalf("parameter is not 'x'. got=%q", fn.Parameters[0])
+	}
+
+	expectedBody := "(x + 2)"
+
+	if fn.Body.String() != expectedBody {
+		t.Fatalf("body is not %q. got=%q", expectedBody, fn.Body.String())
+	}
+}
+
+func TestFunctionApplication(t *testing.T) {
+	tests := map[string]struct {
+		input    string
+		expected int64
+	}{
+		"identity fn using implicit return": {
+			"let identity = fn(x) { x; }; identity(5);", 5,
+		},
+		"identity fn using explicit return": {
+			"let identity = fn(x) { return x; }; identity(4)", 4,
+		},
+		"double fn": {
+			"let double = fn(x) { x * 2; }; double(3)", 6,
+		},
+		"two params add fn": {
+			"let add = fn(x, y) { x + y; }; add(3, 5);", 8,
+		},
+		"add fn called in which param is evaluated": {
+			"let add = fn(x, y) { x + y; }; add(1,add(-1, 1));", 1,
+		},
+		"closure call": {
+			"fn(x){x;}(3)", 3,
+		},
+		"recursive call": {
+			"let fact = fn(x) { if (x > 0) { x * fact(x-1) } else { 1 }; }; fact(3);", 6,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			testIntegerObject(t, testEval(tt.input), tt.expected)
+		})
 	}
 }
 

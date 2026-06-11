@@ -123,11 +123,14 @@ func (rs *ReturnStatement) statementNode() {}
 func (rs *ReturnStatement) TokenLiteral() string {
 	return rs.Token.Literal
 }
+
+// return <ReturnValue>;
 func (rs *ReturnStatement) String() string {
-	// "return"+" "+"<ReturnValue>"+";"
+
 	var out bytes.Buffer
 
-	out.WriteString(rs.TokenLiteral() + " ")
+	out.WriteString(rs.TokenLiteral())
+	out.WriteByte(' ')
 
 	if rs.ReturnValue != nil {
 		out.WriteString(rs.ReturnValue.String())
@@ -139,7 +142,12 @@ func (rs *ReturnStatement) String() string {
 }
 
 /*
-<Expression> + ";" (e.g. 5; add(3,4);
+<Expression>;
+
+For example:
+  - 5;
+  - add(3, 4);
+  - (3 + 4);
 */
 type ExpressionStatement struct {
 	Token      token.Token // first token of this expression
@@ -211,8 +219,10 @@ func (ie *InfixExpression) expressionNode() {}
 func (ie *InfixExpression) TokenLiteral() string {
 	return ie.Token.Literal
 }
+
+// - '3 + 4' -> (3 + 4)
+// - '(4 + 3) * 2' -> ((4 + 3) * 2)
 func (ie *InfixExpression) String() string {
-	// (!5), (!(-5))
 	var out bytes.Buffer
 
 	out.WriteString("(")
@@ -273,6 +283,8 @@ func (bs *BlockStatement) statementNode() {}
 func (bs *BlockStatement) TokenLiteral() string {
 	return bs.Token.Literal
 }
+
+// - '{ x + 1; }' -> (x + 1)
 func (bs *BlockStatement) String() string {
 	var out bytes.Buffer
 

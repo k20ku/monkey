@@ -13,6 +13,9 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
+// Evaluates AST (node) with given environment (env) - the most outer scope where this function called.
+//   - If Eval is successfully done, it returns object representing the result.
+//   - If Eval is interruptly failed, it immediately throws Error objects.
 func Eval(node ast.Node, env *object.Environment) object.Object {
 	switch node := node.(type) {
 	// statement
@@ -60,6 +63,10 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalInfixExpression(node.Operator, left, right)
 	case *ast.IfExpression:
 		return evalIfExpression(node, env)
+	case *ast.FuctionLiteral:
+		return evalFunctionLiteral(node, env)
+	case *ast.CallExpression:
+		return evalCallExpression(node, env)
 	}
 
 	return nil
@@ -69,12 +76,14 @@ func newError(format string, a ...any) *object.Error {
 	return &object.Error{Message: fmt.Sprintf(format, a...)}
 }
 
+// Returns true when the obj is Error. Returns false when obj an non-Error object or nil.
 func isError(obj object.Object) bool {
 	if obj != nil {
 		return obj.Type() == object.ERROR_OBJ
 	}
 	return false
 }
+
 func evalProgram(stmt *ast.Program, env *object.Environment) object.Object {
 	var result object.Object
 	for _, statement := range stmt.Statements {
@@ -97,11 +106,11 @@ func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) obje
 	for _, statement := range block.Statements {
 		result = Eval(statement, env)
 
-		if result != nil {
-			if result.Type() == object.RETURN_VALUE_OBJ ||
-				result.Type() == object.ERROR_OBJ {
-				return result
-			}
+		switch result := result.(type) {
+		case *object.ReturnValue:
+			return result
+		case *object.Error:
+			return result
 		}
 	}
 
@@ -260,4 +269,65 @@ func isTruthy(obj object.Object) bool {
 		}
 		return false
 	}
+}
+
+func evalFunctionLiteral(fl *ast.FuctionLiteral, env *object.Environment) object.Object {
+	params := fl.Parameters
+	body := fl.Body
+	return &object.Function{Parameters: params, Body: body, Env: env}
+}
+
+func evalCallExpression(ce *ast.CallExpression, env *object.Environment) object.Object {
+	function := Eval(ce.Function, env)
+	if isError(function) {
+		return function
+	}
+	args := evalExpressions(ce.Arguments, env)
+	if len(args) == 1 && isError(args[0]) {
+		return args[0]
+	}
+	return applyFunction(function, args)
+}
+
+// returns evaluated objects. If an evaluation Error occurs on at least one Expression, returns Error object
+func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Object {
+	var results []object.Object
+
+	for _, e := range exps {
+		evaluated := Eval(e, env)
+		if isError(evaluated) {
+			return []object.Object{evaluated}
+		}
+		results = append(results, evaluated)
+	}
+
+	return results
+}
+
+func applyFunction(fn object.Object, args []object.Object) object.Object {
+	function, ok := fn.(*object.Function)
+	if !ok {
+		return newError("not a function: %s", fn.Type())
+	}
+
+	extendedEnv := extendedFunctionEnv(function, args)
+	evaluated := Eval(function.Body, extendedEnv)
+	return unwrapReturnValue(evaluated)
+}
+
+func extendedFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
+	env := object.NewEnclosedEnvironment(fn.Env)
+
+	for paramIdx, param := range fn.Parameters {
+		env.Set(param.Value, args[paramIdx])
+	}
+
+	return env
+}
+
+func unwrapReturnValue(obj object.Object) object.Object {
+	if returnValue, ok := obj.(*object.ReturnValue); ok {
+		return returnValue.Value
+	}
+	return obj
 }
