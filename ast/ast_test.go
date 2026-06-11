@@ -2,8 +2,9 @@ package ast
 
 import (
 	"fmt"
-	"monkey/token"
 	"testing"
+
+	"github.com/k20ku/monkey/token"
 )
 
 func TestString(t *testing.T) {

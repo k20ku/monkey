@@ -2,8 +2,9 @@ package ast
 
 import (
 	"bytes"
-	"monkey/token"
 	"strings"
+
+	"github.com/k20ku/monkey/token"
 )
 
 // All ast node MUST implement Node interface (MUST have TokenLiteral() method)
@@ -74,7 +75,8 @@ func (ls *LetStatement) TokenLiteral() string {
 func (ls *LetStatement) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(ls.TokenLiteral() + " ")
+	out.WriteString(ls.TokenLiteral())
+	out.WriteString(" ")
 	out.WriteString(ls.Name.String())
 	out.WriteString(" = ")
 
@@ -121,11 +123,14 @@ func (rs *ReturnStatement) statementNode() {}
 func (rs *ReturnStatement) TokenLiteral() string {
 	return rs.Token.Literal
 }
+
+// return <ReturnValue>;
 func (rs *ReturnStatement) String() string {
-	// "return"+" "+"<ReturnValue>"+";"
+
 	var out bytes.Buffer
 
-	out.WriteString(rs.TokenLiteral() + " ")
+	out.WriteString(rs.TokenLiteral())
+	out.WriteByte(' ')
 
 	if rs.ReturnValue != nil {
 		out.WriteString(rs.ReturnValue.String())
@@ -137,7 +142,12 @@ func (rs *ReturnStatement) String() string {
 }
 
 /*
-<Expression> + ";" (e.g. 5; add(3,4);
+<Expression>;
+
+For example:
+  - 5;
+  - add(3, 4);
+  - (3 + 4);
 */
 type ExpressionStatement struct {
 	Token      token.Token // first token of this expression
@@ -209,13 +219,17 @@ func (ie *InfixExpression) expressionNode() {}
 func (ie *InfixExpression) TokenLiteral() string {
 	return ie.Token.Literal
 }
+
+// - '3 + 4' -> (3 + 4)
+// - '(4 + 3) * 2' -> ((4 + 3) * 2)
 func (ie *InfixExpression) String() string {
-	// (!5), (!(-5))
 	var out bytes.Buffer
 
 	out.WriteString("(")
 	out.WriteString(ie.Left.String())
-	out.WriteString(" " + ie.Operator + " ")
+	out.WriteByte(' ')
+	out.WriteString(ie.Operator)
+	out.WriteByte(' ')
 	out.WriteString(ie.Right.String())
 	out.WriteString(")")
 
@@ -249,14 +263,18 @@ func (ie *IfExpression) TokenLiteral() string {
 func (ie *IfExpression) String() string {
 	var out bytes.Buffer
 
-	out.WriteString("if")
+	out.WriteString("if (")
 	out.WriteString(ie.Condition.String())
-	out.WriteString(" ")
+	out.WriteString(") ")
+	out.WriteString("{ ")
 	out.WriteString(ie.Consequence.String())
+	out.WriteString(" }")
 
 	if ie.Alternative != nil {
 		out.WriteString(" else ")
+		out.WriteString("{ ")
 		out.WriteString(ie.Alternative.String())
+		out.WriteString(" }")
 	}
 
 	return out.String()
@@ -268,17 +286,18 @@ type BlockStatement struct {
 }
 
 func (bs *BlockStatement) statementNode() {}
-func (bs *BlockStatement) TokenLiteal() string {
+func (bs *BlockStatement) TokenLiteral() string {
 	return bs.Token.Literal
 }
-func (bs *BlockStatement) String() string {
-	var out bytes.Buffer
 
+// - '{ x + 1; }' -> (x + 1)
+func (bs *BlockStatement) String() string {
+	var statements []string
 	for _, s := range bs.Statements {
-		out.WriteString(s.String())
+		statements = append(statements, s.String())
 	}
 
-	return out.String()
+	return strings.Join(statements, "; ")
 }
 
 type FuctionLiteral struct {
@@ -302,8 +321,9 @@ func (fl *FuctionLiteral) String() string {
 	out.WriteString(fl.TokenLiteral())
 	out.WriteString("(")
 	out.WriteString(strings.Join(params, ", "))
-	out.WriteString(")")
+	out.WriteString(") { ")
 	out.WriteString(fl.Body.String())
+	out.WriteString(" }")
 
 	return out.String()
 }
