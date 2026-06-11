@@ -310,6 +310,9 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 		return newError("not a function: %s", fn.Type())
 	}
 
+	if len(function.Parameters) != len(args) {
+		return newError("invalid function call: parameters=%d. args=%d", len(function.Parameters), len(args))
+	}
 	extendedEnv := extendedFunctionEnv(function, args)
 	evaluated := Eval(function.Body, extendedEnv)
 	return unwrapReturnValue(evaluated)

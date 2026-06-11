@@ -227,7 +227,9 @@ func (ie *InfixExpression) String() string {
 
 	out.WriteString("(")
 	out.WriteString(ie.Left.String())
-	out.WriteString(" " + ie.Operator + " ")
+	out.WriteByte(' ')
+	out.WriteString(ie.Operator)
+	out.WriteByte(' ')
 	out.WriteString(ie.Right.String())
 	out.WriteString(")")
 
@@ -261,14 +263,18 @@ func (ie *IfExpression) TokenLiteral() string {
 func (ie *IfExpression) String() string {
 	var out bytes.Buffer
 
-	out.WriteString("if")
+	out.WriteString("if (")
 	out.WriteString(ie.Condition.String())
-	out.WriteString(" ")
+	out.WriteString(") ")
+	out.WriteString("{ ")
 	out.WriteString(ie.Consequence.String())
+	out.WriteString(" }")
 
 	if ie.Alternative != nil {
 		out.WriteString(" else ")
+		out.WriteString("{ ")
 		out.WriteString(ie.Alternative.String())
+		out.WriteString(" }")
 	}
 
 	return out.String()
@@ -286,13 +292,12 @@ func (bs *BlockStatement) TokenLiteral() string {
 
 // - '{ x + 1; }' -> (x + 1)
 func (bs *BlockStatement) String() string {
-	var out bytes.Buffer
-
+	var statements []string
 	for _, s := range bs.Statements {
-		out.WriteString(s.String())
+		statements = append(statements, s.String())
 	}
 
-	return out.String()
+	return strings.Join(statements, "; ")
 }
 
 type FuctionLiteral struct {
@@ -316,8 +321,9 @@ func (fl *FuctionLiteral) String() string {
 	out.WriteString(fl.TokenLiteral())
 	out.WriteString("(")
 	out.WriteString(strings.Join(params, ", "))
-	out.WriteString(")")
+	out.WriteString(") { ")
 	out.WriteString(fl.Body.String())
+	out.WriteString(" }")
 
 	return out.String()
 }

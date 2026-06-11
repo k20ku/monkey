@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"slices"
+	"strings"
 
 	"os"
 	"path/filepath"
-	"strings"
 
 	// A well-known OSS golang repl "gore" uses "liner".
 	// See [gore](https://github.com/x-motemen/gore/blob/main/liner.go#L11).
@@ -23,163 +22,134 @@ import (
 )
 
 var (
-	history_filepath = filepath.Join(os.TempDir(), ".monkey_history")
-	keywords         = maps.Keys(token.Keywords)
+	keywords = maps.Keys(token.Keywords)
 )
-
-const MONKEY_FACE = `            __,__
-   .--.  .-"     "-.  .--.
-  / .. \/  .-. .-.  \/ .. \
- | |  '|  /   Y   \  |'  | |
- | \   \  \ 0 | 0 /  /   / |
-  \ '- ,\.-"""""""-./, -' /
-   ''-' /_   ^ ^   _\ '-''
-       |  \._   _./  |
-       \   \ '~' /   /
-        '._ '-=-' _.'
-           '-----'
-`
-
-type ReplMode struct {
-	mode   string
-	prompt string
-}
-
-var AllReplModes = []*ReplMode{}
-
-func registerMode(mode string, prompt string) *ReplMode {
-	m := &ReplMode{mode: mode, prompt: prompt}
-	AllReplModes = append(AllReplModes, m)
-	return m
-}
-
-var (
-	LEX     = registerMode("/lex", "LEX")
-	PARSE   = registerMode("/parse", "PARSE")
-	EVAL    = registerMode("/eval", "EVAL")
-	DEFAULT = registerMode("/", "")
-)
-
-func (rm *ReplMode) String() string {
-	if slices.Contains(AllReplModes, rm) {
-		return rm.mode
-	}
-	return ""
-}
-
-func (rm *ReplMode) Prompt() string {
-	if rm == DEFAULT {
-		return "monkey> "
-	}
-
-	return "monkey(" + rm.prompt + ")> "
-}
 
 func Start() {
-
 	// init/close liner
-	line := liner.NewLiner()
-	defer func() {
-		// write all histories in this session.
-		if hfd, err := os.Create(history_filepath); err == nil { // truncate history_file if it exists
-			line.WriteHistory(hfd)
-			hfd.Close()
-		} else {
-			fmt.Println(" writing history file errors:\n\t", err.Error())
-		}
-		line.Close()
-	}()
+	cl := newContLiner()
+	defer cl.Close()
 
-	// setting liner
-	line.SetMultiLineMode(true)
-	line.SetCtrlCAborts(true)
-	line.SetCompleter(func(line string) (c []string) {
+	cl.SetCompleter(func(line string) []string {
+		var c []string
 		for keyword := range keywords {
 			if strings.HasPrefix(keyword, strings.ToLower(line)) {
 				c = append(c, keyword)
 			}
 		}
-		return
+		return c
 	})
-
 	// read history
-	if hfd, err := os.Open(history_filepath); err == nil {
-		line.ReadHistory(hfd)
-		hfd.Close()
+	var historyFile string
+	home, err := homeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "REPL: home: %+v", err)
+	} else {
+		historyFile = filepath.Join(home, "history")
+		f, err := os.Open(historyFile)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				fmt.Fprintf(os.Stderr, "REPL: %+v\n", err)
+			}
+		} else {
+			_, err := cl.ReadHistory(f)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "REPL: while reading history: %+v", err)
+			}
+			f.Close()
+		}
 	}
 
-	// init mode
-	var replMode *ReplMode = DEFAULT
+	// init env
 	env := object.NewEnvironment()
 	// start repl
 	for {
-		codeline, err := line.Prompt(replMode.Prompt())
+		in, err := cl.Prompt("")
 
-		codeline = strings.TrimSpace(codeline)
-
-		if changeMode(codeline) {
-			mode := strings.Split(codeline, " ")[0]
-			switch strings.ToLower(mode) {
-			case LEX.String():
-				replMode = LEX
-			case PARSE.String():
-				replMode = PARSE
-			case EVAL.String():
-				replMode = EVAL
-			case DEFAULT.String():
-				replMode = DEFAULT
-			default:
-				fmt.Printf("\t"+"No Mode for '%s'!"+"\n", mode)
-				modes := []string{}
-				for _, mode := range AllReplModes {
-					modes = append(modes, "'"+mode.String()+"'")
-				}
-				fmt.Printf("\t"+"Only Either of %s is Allowed!"+"\n", strings.Join(modes, ", "))
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("(^D)")
+				break
+			} else if err == liner.ErrPromptAborted {
+				continue
 			}
+			fmt.Fprintf(os.Stderr, "REPL: %+v\n", err)
+		}
 
+		if in == "" {
 			continue
 		}
 
-		switch err {
-		case nil:
-			doOn(replMode, codeline, env)
-			line.AppendHistory(codeline)
-
-		case io.EOF:
-			fmt.Println("(^D)")
-			return
-
-		case liner.ErrPromptAborted: // resume repl if aborted
+		if err := cl.Reindent(""); err != nil {
+			cl.Clear()
 			continue
+		}
 
-		default:
-			fmt.Println(" reading line errors:\n\t", err)
+		if cl.CountDepth() < 0 {
+			fmt.Printf("%s: %s\n", in, errUnmatchedBraces)
+			cl.Clear()
+			continue
+		} else if cl.CountDepth() != 0 {
+			continue
+		}
+
+		Eval(cl.buffer, env)
+
+		cl.Accepted()
+		if historyFile != "" {
+			err := os.MkdirAll(filepath.Dir(historyFile), 0o755)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s", err)
+			} else {
+				f, err := os.Create(historyFile)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%s", err)
+				} else {
+					_, err := cl.WriteHistory(f)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "while saving history: %s", err)
+					}
+					f.Close()
+				}
+			}
 		}
 	}
+
 }
 
-func doOn(mode *ReplMode, codeline string, env *object.Environment) {
-	switch mode {
-	case LEX:
-		doOnLex(codeline)
-	case PARSE:
-		doOnParse(codeline)
-	case EVAL:
-		doOnEval(codeline, env)
-	case DEFAULT:
-		doOnDefault(codeline, env)
+func homeDir() (home string, err error) {
+	home = os.Getenv("MONKEY_HOME")
+	if home != "" {
+		return
 	}
+
+	var baseDir string
+
+	baseDir = os.Getenv("XDG_DATA_HOME")
+	if baseDir != "" {
+		home = filepath.Join(baseDir, "monkey")
+
+		return
+	}
+
+	baseDir, err = os.UserHomeDir()
+	if err != nil {
+		return
+	}
+
+	home = filepath.Join(baseDir, ".monkey")
+	return
 }
 
-func doOnLex(codeline string) {
-	l := lexer.New(codeline)
+func Lex(in string) {
+	l := lexer.New(in)
 	for tok := l.NextToken(); tok.Type != token.EOF; tok = l.NextToken() {
 		fmt.Printf("%+v\n", tok)
 	}
 }
 
-func doOnParse(codeline string) {
-	l := lexer.New(codeline)
+func Parse(in string) {
+	l := lexer.New(in)
 	p := parser.New(l)
 	program := p.ParseProgram()
 
@@ -197,8 +167,8 @@ func doOnParse(codeline string) {
 	io.WriteString(os.Stdout, "\n")
 }
 
-func doOnEval(codeline string, env *object.Environment) {
-	l := lexer.New(codeline)
+func Eval(in string, env *object.Environment) {
+	l := lexer.New(in)
 	p := parser.New(l)
 	program := p.ParseProgram()
 
@@ -212,14 +182,6 @@ func doOnEval(codeline string, env *object.Environment) {
 		io.WriteString(os.Stdout, evaluated.Inspect())
 		io.WriteString(os.Stdout, "\n")
 	}
-}
-
-func doOnDefault(codeline string, env *object.Environment) {
-	doOnEval(codeline, env)
-}
-
-func changeMode(codeline string) bool {
-	return strings.HasPrefix(codeline, "/")
 }
 
 func printParserErrors(out io.Writer, errors []string) {

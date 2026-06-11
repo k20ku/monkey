@@ -18,15 +18,23 @@ go run .
 Hello <username>! This is the Monkey programming language!
 Feel free to type in commands
 Ctrl+D to exit!
-'/lex', '/parse', '/eval', '/'
-monkey> 
+> let fib = fn(n, a0, a1) {
+.   if (n > 0) {
+.     fib(n - 1, a1, a0 + a1)
+.   } else {
+.     a0
+.   }
+. }
+fn(n, a0, a1) {
+  if ((n > 0)) { fib((n - 1), a1, (a0 + a1)) } else { a0 }
+}
+> let a = 150;
+150
+> fib(a, 0, 1)
+6792540214324356296
+> fib(a)
+ERROR: invalid function call: parameters=3. args=1
 ```
-
-- **There are some REPL modes**:
-        - `/`: default mode (current is `EVAL` mode) (input REPL to `/`)
-        - `EVAL`: evaluates inputs (input REPL to `/eval`)
-        - `PARSE`: parse input and prints JSON AST (input REPL to `/parse`)
-        - `LEX`: lex input and prints Tokens (input REPL to `/lex`)
 
 ## Tests
 
@@ -40,14 +48,49 @@ Example:
 go test -timeout 5s -run TestParsingPrefixExpressions github.com/k20ku/monkey/parser -v
 ```
 
+## Monkey Language AST Structure
+
+```ocaml
+Node :=
+      *Program(Statements: []Statement)
+    | Statement
+    | Expression
+
+Statement :=
+      *LetStatement(Name: *identifier, Value: Expression)
+    | *ReturnStatement(ReturnValue: Expression)
+    | *ExpressionStatement(Expression: Expression)
+    | *BlockStatement(Statements: []Statement)
+
+Expression :=
+      *Identifier
+    | *IntegerLiteral
+    | *PrefixExpression(Right: Expression)
+    | *InfixExpressoion(Left: Expression, Right: Expression)
+    | *Boolean
+    | *IfExpression(
+        Condition: Expression
+        Consequence: *BlockStatement
+        Alternative: *BlockStatement
+      )
+    | *FunctionLiteral(
+        Parameters: []*identifier
+        Body: *BlockStatement  
+      )
+    | *CallExpression(
+        Function: Expression
+        Arguments: []Expression
+      )
+```
+
 ## Motivation
 
 当初は書籍の内容を忠実に実装することを目的としていたが、実装を進める中で REPL や Parser の改善、開発体験の向上にも取り組んでいる。
 
 ## Current Status
 
-- 現在は Evaluator を実装中。
-- Function Evaluation が残っており、その完了後に REPL の改善を本体へ統合する予定。
+- 現在は Evaluator を実装完了。
+- REPLの複数行対応完了（Unix系・Windows系）
 
 ## Improvements
 
@@ -72,9 +115,9 @@ go test -timeout 5s -run TestParsingPrefixExpressions github.com/k20ku/monkey/pa
 - ほぼnative Goで書かれており依存が非常に少ない
 - 必要以上に高機能ではない
 
-### 2. ContLine (Future)
+### 2. ContLine
 
-将来的な継続行対応．
+継続行対応．
 
 ```monkey
 monkey> fn add(x0, x1) {
@@ -110,28 +153,7 @@ EntryPoint
 #### 展望
 
 - 現在は複数行入力と自動インデントが動作することを確認している。
-- ただし、これはまだ実験用リポジトリでの検証段階であり、本体への統合は Evaluator 完了後に行う予定。
-
-```commonlisp
-(repl) > (defun fib (n)
-........   (if (<= n 1)
-........     n
-........     (+ fib (- n 1)
-........       fib (- n 2)
-........     )
-........   )
-........ )
-```
-
-```monkey
-(repl) > fn fib(n) {
-........   return if (n <= 1) {
-........     n
-........   } else {
-........     fib(n - 1) + fib(n - 2)
-........   }
-........ }
-```
+- 今後は `session.go` を用いて，`:mode lex` などによるモード切替を実装する予定．
 
 ### 3. Parser
 
@@ -160,39 +182,6 @@ return x
 - Evaluator 実装中、AST 全体の構造を把握しづらくなった。
 - そのため OCaml の代数的データ型風の表記で AST を整理した。
 - これは見栄えのためではなく、Evaluator 実装時の認知負荷を下げることが目的である。
-
-```ocaml
-Node :=
-      *Program(Statements: []Statement)
-    | Statement
-    | Expression
-
-Statement :=
-      *LetStatement(Name: *identifier, Value: Expression)
-    | *ReturnStatement(ReturnValue: Expression)
-    | *ExpressionStatement(Expression: Expression)
-    | *BlockStatement(Statements: []Statement)
-
-Expression :=
-      *Identifier
-    | *IntegerLiteral
-    | *PrefixExpression(Right: Expression)
-    | *InfixExpressoion(Left: Expression, Right: Expression)
-    | *Boolean
-    | *IfExpression(
-        Condition: Expression
-        Consequence: *BlockStatement
-        Alternative: *BlockStatement
-      )
-    | *FunctionLiteral(
-        Parameters: []*identifier
-        Body: *BlockStatement  
-      )
-    | *CallExpression(
-        Function: Expression
-        Arguments: []Expression
-      )
-```
 
 ## Development Process
 
