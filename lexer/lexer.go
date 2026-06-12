@@ -1,6 +1,10 @@
 package lexer
 
-import "github.com/k20ku/monkey/token"
+import (
+	"bytes"
+
+	"github.com/k20ku/monkey/token"
+)
 
 type Lexer struct {
 	input        string
@@ -75,6 +79,9 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.LBRACE, l.ch)
 	case '}':
 		tok = newToken(token.RBRACE, l.ch)
+	case '"':
+		tok.Type = token.STRING
+		tok.Literal = l.readString()
 	case 0:
 		tok.Type = token.EOF
 		tok.Literal = ""
@@ -113,6 +120,44 @@ func (l *Lexer) peekChar() byte {
 	} else {
 		return l.input[l.readPosition]
 	}
+}
+
+func (l *Lexer) readString() string {
+	var res bytes.Buffer
+	for {
+		l.readChar()
+
+		if l.ch == '\\' {
+			switch l.peekChar() {
+			case '"':
+				res.WriteByte('"')
+				l.readChar()
+			case '\\':
+				res.WriteByte('\\')
+				l.readChar()
+			case 'n':
+				res.WriteByte('\n')
+				l.readChar()
+			case 't':
+				res.WriteByte('\t')
+				l.readChar()
+			case 'r':
+				res.WriteByte('\r')
+				l.readChar()
+			}
+			continue
+
+		}
+
+		if l.ch == '"' || l.ch == 0 {
+			break
+
+		}
+
+		res.WriteByte(l.ch)
+	}
+
+	return res.String()
 }
 
 func (l *Lexer) readIdentifier() string {

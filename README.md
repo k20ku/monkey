@@ -4,12 +4,12 @@ Coding along with "Writing An Interpreter In Go"(Thorsten Ball).
 
 Thorsten Ball 著『Writing An Interpreter In Go』の実装リポジトリ。
 
-## Run REPL
+## Getting Started to REPL
 
 - **Start**:
 
 ```bash
-go run .
+make start
 ```
 
 - **REPL**:
