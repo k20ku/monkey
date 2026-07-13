@@ -65,6 +65,7 @@ Statement :=
 Expression :=
       *Identifier
     | *IntegerLiteral
+    | *StringLiteral
     | *PrefixExpression(Right: Expression)
     | *InfixExpressoion(Left: Expression, Right: Expression)
     | *Boolean
