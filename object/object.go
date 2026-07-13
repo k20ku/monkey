@@ -9,6 +9,7 @@ import (
 )
 
 type ObjectType string
+type BuiltinFunction func(args ...Object) Object
 
 const (
 	INTEGER_OBJ      = "INTEGER"
@@ -18,6 +19,7 @@ const (
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 	FUNCTION_OBJ     = "FUNCTION"
 	ERROR_OBJ        = "ERROR"
+	BUILTIN_OBJ      = "BUILTIN"
 )
 
 type Object interface {
@@ -120,4 +122,16 @@ func (e *Error) Type() ObjectType {
 
 func (e *Error) Inspect() string {
 	return "ERROR: " + e.Message
+}
+
+type Builtin struct {
+	Fn BuiltinFunction
+}
+
+func (b *Builtin) Type() ObjectType {
+	return BUILTIN_OBJ
+}
+
+func (b *Builtin) Inspect() string {
+	return "builtin function"
 }

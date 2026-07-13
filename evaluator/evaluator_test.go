@@ -411,3 +411,44 @@ func TestLetStatement(t *testing.T) {
 		})
 	}
 }
+
+func TestBuiltinFunctions(t *testing.T) {
+	tests := map[string]struct {
+		input    string
+		expected any
+	}{
+		"empty str": {
+			`len("")`, 0,
+		},
+		"str four": {
+			`len("four")`, 4,
+		},
+		"len not supported to int": {
+			`len(1)`, "argument to `len` not supported, got INTEGER",
+		},
+		"len wrong number of argument": {
+			`len("one", "two")`, "wrong number of arguments. got=2, want=1",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			evaluated := testEval(tt.input)
+
+			switch expected := tt.expected.(type) {
+			case int:
+				testIntegerObject(t, evaluated, int64(expected))
+			case string:
+				errObj, ok := evaluated.(*object.Error)
+				if !ok {
+					t.Fatalf("object is not Error. got=%T (%+v)",
+						evaluated, evaluated)
+				}
+				if errObj.Message != expected {
+					t.Fatalf("wrong error message. expected=%q, got=%q",
+						expected, errObj.Message)
+				}
+			}
+		})
+	}
+}
