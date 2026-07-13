@@ -427,7 +427,8 @@ func TestBuiltinFunctions(t *testing.T) {
 			`len(1)`, "argument to `len` not supported, got INTEGER",
 		},
 		"len wrong number of argument": {
-			`len("one", "two")`, "wrong number of arguments. got=2, want=1",
+			`len("one", "two")`,
+			serrorf(err_wrong_number_of_arguments, 2, 1),
 		},
 	}
 
