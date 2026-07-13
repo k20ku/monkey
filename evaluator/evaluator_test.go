@@ -94,6 +94,36 @@ func TestStringConcatenation(t *testing.T) {
 	}
 }
 
+func TestStringEqual(t *testing.T) {
+	tests := map[string]struct {
+		input    string
+		expected bool
+	}{
+		"STRING==STRING": {
+			`"Hello" == "Hello"`,
+			true,
+		},
+		"STRING==STRING is false": {
+			`"Hello" == "hello"`,
+			false,
+		},
+		"STRING!=STRING": {
+			`"monkey" != "monkey"`,
+			false,
+		},
+		"STRING!=STRING is true": {
+			`"Hello" != "World"`,
+			true,
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			evaluated := testEval(tt.input)
+			testBooleanObject(t, evaluated, tt.expected)
+		})
+	}
+}
+
 func TestEvalBooleanExpression(t *testing.T) {
 	tests := []struct {
 		input    string
