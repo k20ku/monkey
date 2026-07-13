@@ -183,6 +183,8 @@ func evalInfixExpression(
 	switch {
 	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
 		return evalIntegerInfixExpression(operator, left, right)
+	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
+		return evalStringInfixExpression(operator, left, right)
 	// default is pointer comparision between objects
 	case operator == "==":
 		return nativeBoolToBooleanObject(left == right)
@@ -237,6 +239,24 @@ func evalIntegerInfixExpression(
 			right.Type(), right.Inspect(),
 		)
 	}
+}
+
+func evalStringInfixExpression(
+	operator string,
+	left, right object.Object,
+) object.Object {
+	if operator != "+" {
+		return newError(
+			"unknown operator: %s(%s) %s %s(%s)",
+			left.Type(), left.Inspect(),
+			operator,
+			right.Type(), right.Inspect(),
+		)
+	}
+
+	leftVal := left.(*object.String).Value
+	rightVal := right.(*object.String).Value
+	return &object.String{Value: leftVal + rightVal}
 }
 
 func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Object {
